@@ -578,7 +578,7 @@ void convertPdfToImageOnlyPdf(const QString &sourcePdf, const QString &destinati
                 }
 
                 QImage image = renderPage(pdf, i, dpi);
-                painter.drawImage(painter.viewport(), image);
+                painter.drawImage(writer.pageLayout().fullRectPixels(dpi), image);
             }
             painter.end();
         }
