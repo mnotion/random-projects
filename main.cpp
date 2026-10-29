@@ -37,6 +37,7 @@
 #include <QWidget>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
@@ -44,7 +45,7 @@
 #include <vector>
 
 namespace {
-constexpr int kDefaultDpi = 600;
+constexpr int kDefaultDpi = 300;
 constexpr quint64 kMaxPixelsPerPage = 40000000ULL;
 constexpr quint64 kMaxZip32Size = 0xFFFFFFFFULL;
 constexpr quint16 kZipUtf8Flag = 0x0800;
@@ -115,10 +116,21 @@ void writeU32(QIODevice &device, quint32 value)
 
 quint32 crc32Update(quint32 crc, const char *data, qsizetype length)
 {
+    // A lookup table avoids eight bit-steps for every byte in every rendered page.
+    static const std::array<quint32, 256> table = [] {
+        std::array<quint32, 256> values{};
+        for (quint32 i = 0; i < values.size(); ++i) {
+            quint32 value = i;
+            for (int bit = 0; bit < 8; ++bit)
+                value = (value >> 1) ^ (0xEDB88320U & (0U - (value & 1U)));
+            values[i] = value;
+        }
+        return values;
+    }();
+
     for (qsizetype i = 0; i < length; ++i) {
-        crc ^= static_cast<unsigned char>(data[i]);
-        for (int bit = 0; bit < 8; ++bit)
-            crc = (crc >> 1) ^ (0xEDB88320U & (0U - (crc & 1U)));
+        const quint8 byte = static_cast<quint8>(data[i]);
+        crc = table[(crc ^ byte) & 0xFFU] ^ (crc >> 8);
     }
     return crc;
 }
@@ -520,6 +532,67 @@ QString findLibreOffice()
     return {};
 }
 
+void convertDocxToLegacyDoc(const QString &source,
+                            const QString &destination,
+                            const QString &tempDirectory,
+                            const QString &libreOffice)
+{
+    const QString profileDirectory = QDir(tempDirectory).filePath(QStringLiteral("legacy-profile"));
+    if (!QDir().mkpath(profileDirectory))
+        fail(QStringLiteral("Could not create a temporary LibreOffice profile."));
+
+    const QString profileUrl = QUrl::fromLocalFile(profileDirectory).toString(QUrl::FullyEncoded);
+    QProcess process;
+    process.setProgram(libreOffice);
+    process.setArguments({
+        QStringLiteral("--headless"),
+        QStringLiteral("-env:UserInstallation=") + profileUrl,
+        QStringLiteral("--convert-to"),
+        QStringLiteral("doc:MS Word 97"),
+        QStringLiteral("--outdir"),
+        tempDirectory,
+        source
+    });
+    process.start();
+
+    if (!process.waitForStarted(10000))
+        fail(QStringLiteral("LibreOffice could not be started for legacy .doc export."));
+    if (!process.waitForFinished(300000)) {
+        process.kill();
+        process.waitForFinished();
+        fail(QStringLiteral("LibreOffice took too long to export legacy .doc: %1").arg(source));
+    }
+
+    const QString generated = QDir(tempDirectory).filePath(
+        QFileInfo(source).completeBaseName() + QStringLiteral(".doc"));
+    if (process.exitStatus() != QProcess::NormalExit ||
+        process.exitCode() != 0 ||
+        !QFileInfo(generated).isFile()) {
+        QString detail = QString::fromUtf8(process.readAllStandardError()).trimmed();
+        if (detail.isEmpty())
+            detail = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+        if (detail.isEmpty())
+            detail = QStringLiteral("LibreOffice did not produce a .doc file.");
+        fail(QStringLiteral("Legacy .doc export failed: %1").arg(detail));
+    }
+
+    QFile input(generated);
+    if (!input.open(QIODevice::ReadOnly))
+        fail(QStringLiteral("Could not read the generated legacy .doc file."));
+    QSaveFile output(destination);
+    if (!output.open(QIODevice::WriteOnly))
+        fail(QStringLiteral("Could not create legacy .doc output: %1").arg(destination));
+
+    char buffer[1024 * 1024];
+    while (!input.atEnd()) {
+        const qint64 count = input.read(buffer, sizeof(buffer));
+        if (count < 0 || (count > 0 && !writeAll(output, buffer, count)))
+            fail(QStringLiteral("Failed while copying the legacy .doc output."));
+    }
+    if (!output.commit())
+        fail(QStringLiteral("Could not finish writing legacy .doc: %1").arg(destination));
+}
+
 QString convertWordToTemporaryPdf(const QString &source, const QString &tempDirectory, const QString &libreOffice)
 {
     const QString profileDirectory = QDir(tempDirectory).filePath(QStringLiteral("lo-profile"));
@@ -657,6 +730,12 @@ bool supportedFile(const QString &path, bool pdfToWord)
     return wordExtensions.contains(suffix);
 }
 
+enum class ConversionMode {
+    PdfToDocx,
+    PdfToDoc,
+    WordToPdf
+};
+
 QString relativePath(const QString &root, const QString &filePath)
 {
     return QDir(root).relativeFilePath(filePath);
@@ -701,9 +780,9 @@ class BatchWorker final : public QObject {
     Q_OBJECT
 
 public:
-    BatchWorker(QString root, bool pdfToWord, bool recursive, int dpi, QString libreOffice)
+    BatchWorker(QString root, ConversionMode mode, bool recursive, int dpi, QString libreOffice)
         : m_root(QDir::cleanPath(std::move(root))),
-          m_pdfToWord(pdfToWord),
+          m_mode(mode),
           m_recursive(recursive),
           m_dpi(dpi),
           m_libreOffice(std::move(libreOffice))
@@ -718,7 +797,8 @@ signals:
 public slots:
     void run()
     {
-        const QString outputRoot = QDir(m_root).filePath(outputDirectoryName(m_pdfToWord));
+        const bool pdfToWord = m_mode != ConversionMode::WordToPdf;
+        const QString outputRoot = QDir(m_root).filePath(outputDirectoryName(pdfToWord));
         if (!QDir().mkpath(outputRoot)) {
             emit logMessage(QStringLiteral("ERROR: Could not create output folder: %1").arg(outputRoot));
             emit finished(0, 0, 0, outputRoot);
@@ -761,7 +841,9 @@ public slots:
             const QString source = files.at(i);
             try {
                 const QString relative = relativePath(m_root, source);
-                const QString outputSuffix = m_pdfToWord ? QStringLiteral(".docx") : QStringLiteral(".pdf");
+                const QString outputSuffix = m_mode == ConversionMode::PdfToDoc
+                    ? QStringLiteral(".doc")
+                    : (pdfToWord ? QStringLiteral(".docx") : QStringLiteral(".pdf"));
                 const QString destination = uniqueOutputPath(outputRoot, relative, outputSuffix, &reservedTargets);
                 if (!QDir().mkpath(QFileInfo(destination).absolutePath()))
                     fail(QStringLiteral("Could not create output subfolder."));
@@ -770,9 +852,15 @@ public slots:
                 if (!temp.isValid())
                     fail(QStringLiteral("Could not create a temporary working directory."));
 
-                if (m_pdfToWord) {
+                if (m_mode == ConversionMode::PdfToDocx) {
                     convertPdfToWord(source, destination, m_dpi, temp.path());
                     emit logMessage(QStringLiteral("[%1/%2] OK  %3 -> %4 (PNG pages, no OCR)")
+                                        .arg(i + 1).arg(files.size()).arg(relative, QDir(outputRoot).relativeFilePath(destination)));
+                } else if (m_mode == ConversionMode::PdfToDoc) {
+                    const QString intermediateDocx = QDir(temp.path()).filePath(QStringLiteral("legacy-stage.docx"));
+                    convertPdfToWord(source, intermediateDocx, m_dpi, temp.path());
+                    convertDocxToLegacyDoc(intermediateDocx, destination, temp.path(), m_libreOffice);
+                    emit logMessage(QStringLiteral("[%1/%2] OK  %3 -> %4 (legacy .doc, image pages, no OCR)")
                                         .arg(i + 1).arg(files.size()).arg(relative, QDir(outputRoot).relativeFilePath(destination)));
                 } else {
                     const QString intermediatePdf = convertWordToTemporaryPdf(source, temp.path(), m_libreOffice);
@@ -800,7 +888,7 @@ public slots:
 
 private:
     QString m_root;
-    bool m_pdfToWord = true;
+    ConversionMode m_mode = ConversionMode::PdfToDocx;
     bool m_recursive = true;
     int m_dpi = kDefaultDpi;
     QString m_libreOffice;
@@ -845,9 +933,16 @@ public:
 
         auto *options = new QHBoxLayout();
         m_direction = new QComboBox(central);
-        m_direction->addItem(QStringLiteral("PDF → Word"), true);
-        m_direction->addItem(QStringLiteral("Word → PDF"), false);
+        m_direction->addItem(QStringLiteral("PDF → Word"), static_cast<int>(ConversionMode::PdfToDocx));
+        m_direction->addItem(QStringLiteral("PDF → Word (Legacy .doc)"), static_cast<int>(ConversionMode::PdfToDoc));
+        m_direction->addItem(QStringLiteral("Word → PDF"), static_cast<int>(ConversionMode::WordToPdf));
+        m_quality = new QComboBox(central);
+        m_quality->addItem(QStringLiteral("Fast — 150 DPI"), 150);
+        m_quality->addItem(QStringLiteral("Balanced — 300 DPI"), 300);
+        m_quality->addItem(QStringLiteral("Maximum — 600 DPI"), 600);
+        m_quality->setCurrentIndex(1);
         options->addWidget(m_direction, 1);
+        options->addWidget(m_quality, 1);
         layout->addLayout(options);
 
         m_recursive = new QCheckBox(QStringLiteral("Include subfolders and preserve their folder structure"), central);
@@ -897,9 +992,11 @@ private:
             return;
         }
 
-        const bool pdfToWord = m_direction->currentData().toBool();
+        const ConversionMode mode = static_cast<ConversionMode>(m_direction->currentData().toInt());
+        const bool pdfToWord = mode != ConversionMode::WordToPdf;
+        const int dpi = m_quality->currentData().toInt();
         QString libreOffice;
-        if (!pdfToWord) {
+        if (mode != ConversionMode::PdfToDocx) {
             libreOffice = findLibreOffice();
             if (libreOffice.isEmpty()) {
                 QMessageBox::critical(
@@ -914,12 +1011,12 @@ private:
         m_progress->setFormat(QStringLiteral("Preparing…"));
         m_log->clear();
         appendLog(QStringLiteral("Input: %1").arg(root));
-        appendLog(QStringLiteral("Direction: %1").arg(pdfToWord ? QStringLiteral("PDF → Word") : QStringLiteral("Word → PDF")));
-        appendLog(QStringLiteral("Render quality: maximum (600 DPI)"));
+        appendLog(QStringLiteral("Direction: %1").arg(m_direction->currentText()));
+        appendLog(QStringLiteral("Render quality: %1 DPI").arg(dpi));
 
         m_thread = new QThread(this);
-        auto *worker = new BatchWorker(root, pdfToWord, m_recursive->isChecked(),
-                                       kDefaultDpi, libreOffice);
+        auto *worker = new BatchWorker(root, mode, m_recursive->isChecked(),
+                                       dpi, libreOffice);
         worker->moveToThread(m_thread);
 
         connect(m_thread, &QThread::started, worker, &BatchWorker::run);
@@ -969,6 +1066,7 @@ private:
 
     QLineEdit *m_folder = nullptr;
     QComboBox *m_direction = nullptr;
+    QComboBox *m_quality = nullptr;
     QCheckBox *m_recursive = nullptr;
     QPushButton *m_convert = nullptr;
     QProgressBar *m_progress = nullptr;
