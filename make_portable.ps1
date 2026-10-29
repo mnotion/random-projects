@@ -29,8 +29,8 @@ foreach ($dir in $candidates) {
     $possible = Join-Path $dir.FullName 'CMakeCache.txt'
     if (-not (Test-Path $possible)) { continue }
     $txt = Get-Content -LiteralPath $possible -Raw
-    $home = Read-CacheValue $txt 'CMAKE_HOME_DIRECTORY'
-    if ($home -and [IO.Path]::GetFullPath($home).TrimEnd('\') -ieq $repo.TrimEnd('\')) {
+    $projectHome = Read-CacheValue $txt 'CMAKE_HOME_DIRECTORY'
+    if ($projectHome -and [IO.Path]::GetFullPath($projectHome).TrimEnd('\') -ieq $repo.TrimEnd('\')) {
         $cachePath = $possible
         $cacheText = $txt
         break
