@@ -44,6 +44,37 @@ def find_libreoffice() -> str | None:
     return None
 
 
+def find_tessdata_directory() -> Path | None:
+    """Locate the Tesseract language-data directory used by PyMuPDF OCR."""
+    candidates: list[Path] = []
+    configured = os.environ.get("TESSDATA_PREFIX")
+    if configured:
+        candidates.append(Path(configured))
+
+    executable = shutil.which("tesseract")
+    if executable:
+        candidates.append(Path(executable).resolve().parent / "tessdata")
+
+    if os.name == "nt":
+        for base in (os.environ.get("PROGRAMFILES"), os.environ.get("PROGRAMFILES(X86)")):
+            if base:
+                candidates.append(Path(base) / "Tesseract-OCR" / "tessdata")
+    else:
+        candidates.extend(
+            Path(path) for path in (
+                "/usr/share/tesseract-ocr/5/tessdata",
+                "/usr/share/tesseract-ocr/4.00/tessdata",
+                "/usr/share/tessdata",
+                "/usr/local/share/tessdata",
+            )
+        )
+
+    for candidate in candidates:
+        if candidate.is_dir() and any(candidate.glob("*.traineddata")):
+            return candidate
+    return None
+
+
 def page_text_lengths(pdf_path: Path) -> list[int]:
     with fitz.open(pdf_path) as pdf:
         return [len(page.get_text("text").strip()) for page in pdf]
@@ -67,7 +98,13 @@ def pdf_to_word(pdf_path: Path, docx_path: Path, ocr_language: str) -> str:
     document = Document()
     with fitz.open(pdf_path) as pdf:
         for index, page in enumerate(pdf):
-            text_page = page.get_textpage_ocr(language=ocr_language, dpi=300, full=True)
+            tessdata = find_tessdata_directory()
+            text_page = page.get_textpage_ocr(
+                language=ocr_language,
+                dpi=300,
+                full=True,
+                tessdata=str(tessdata) if tessdata else None,
+            )
             extracted = page.get_text("text", textpage=text_page).strip()
             if index > 0:
                 document.add_page_break()
