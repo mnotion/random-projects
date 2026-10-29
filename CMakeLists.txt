@@ -23,7 +23,7 @@ target_link_libraries(PageConvert PRIVATE
 )
 
 if(MSVC)
-    target_compile_options(PageConvert PRIVATE /W4 /permissive-)
+    target_compile_options(PageConvert PRIVATE /W4 /permissive- /utf-8)
 else()
     target_compile_options(PageConvert PRIVATE -Wall -Wextra -Wpedantic)
 endif()
