@@ -11,7 +11,7 @@ A small desktop utility that batch-converts documents in a chosen folder:
 
 1. Install Python 3.11 or newer from https://www.python.org/downloads/.
 2. Install LibreOffice from https://www.libreoffice.org/download/download-libreoffice/ for Word → PDF.
-3. Install Tesseract OCR from https://github.com/UB-Mannheim/tesseract/wiki for scanned PDF → Word. Include the language data you need and make sure Tesseract is on your PATH. English uses the language code eng.
+3. Install Tesseract OCR from https://github.com/UB-Mannheim/tesseract/wiki for scanned PDF → Word. Include the language data you need and make sure Tesseract is on your PATH. English uses the language code eng. The app tries to find the tessdata folder automatically; if OCR cannot find it, set the TESSDATA_PREFIX environment variable to that folder (commonly C:/Program Files/Tesseract-OCR/tessdata).
 4. Double-click run.bat. On first launch it creates a local virtual environment and installs the Python packages.
 5. Choose the folder, select a conversion direction, and click Convert files.
 
