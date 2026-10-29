@@ -4,7 +4,7 @@ A small C++/Qt desktop utility for batch-converting a folder of documents. It tu
 
 ## What it does
 
-- **PDF → Word:** renders every PDF page to a PNG at the selected DPI and embeds each PNG as a full-page image in a .docx file.
+- **PDF → Word:** renders every PDF page to a PNG at 600 DPI and embeds each PNG as a full-page image in a .docx file.
 - **Word → PDF:** uses LibreOffice to lay out Word-compatible documents, then renders that PDF to PNG pages and builds an image-only PDF.
 - Scans a selected folder, optionally including subfolders, and preserves the relative folder structure.
 - Writes output to Converted_Word or Converted_PDF inside the selected folder. It skips both output folders on later runs.
@@ -14,7 +14,7 @@ A small C++/Qt desktop utility for batch-converting a folder of documents. It tu
 
 PNG compression is lossless, so the stored raster pixels are not compressed with JPEG-style quality loss. However, a PDF or Word document is being **rasterised** to pixels: this does not preserve the original vector shapes, embedded fonts, searchable text, links, form fields, or document structure. The resulting Word document contains page images rather than editable text, and the resulting PDF contains image pages rather than a selectable text layer. No OCR is performed.
 
-Choose a higher DPI for more image detail at the cost of larger files and more memory use. The default is 300 DPI; 600 DPI is available for high detail.
+The app always renders at 600 DPI. Higher-resolution output can produce large files and use substantial memory.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ Alternatively, run build_and_run.bat in a developer command prompt where CMake, 
 
 1. Launch PageConvert and select the folder containing the source documents.
 2. Choose PDF → Word or Word → PDF.
-3. Choose 150, 300, or 600 DPI. 300 DPI is the default.
+3. Conversion always uses the maximum render setting: 600 DPI.
 4. Leave **Include subfolders** enabled to process all matching files below the selected folder.
 5. Select **Convert folder**. The app shows progress and logs failed files without stopping the rest of the batch.
 
@@ -46,7 +46,7 @@ Word-compatible formats recognised for the second direction are .docx, .doc, .do
 
 - The app and conversion logic are written in C++ using Qt 6 Widgets, Qt PDF, and Qt's PDF writer.
 - The .docx package is assembled in C++ and stores the generated PNGs without additional ZIP compression; the PNG files themselves use lossless compression.
-- For unusually large page sizes, reduce the DPI if the app reports that a page would exceed its safety limit.
+- For unusually large page sizes, the app may report that a page exceeds its safety limit.
 - Password-protected or damaged PDFs may not be readable by Qt PDF.
 - Source documents are processed locally. No documents are uploaded to a service.
 
