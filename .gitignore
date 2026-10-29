@@ -1,0 +1,12 @@
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+Converted_Word/
+Converted_PDF/
