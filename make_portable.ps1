@@ -15,7 +15,10 @@ Write-Host "Looking for the Qt Creator kit used for this project..."
 $candidates = @()
 $candidates += Get-ChildItem -Path $repo -Directory -ErrorAction SilentlyContinue
 $candidates += Get-ChildItem -Path $parent -Directory -ErrorAction SilentlyContinue
-foreach ($d in @($candidates.ToArray())) {
+# Only inspect the first layer of each candidate folder; Qt Creator commonly
+# creates its build folder beside the source repository.
+$initialCandidates = @($candidates)
+foreach ($d in $initialCandidates) {
     $candidates += Get-ChildItem -Path $d.FullName -Directory -ErrorAction SilentlyContinue
 }
 $candidates = $candidates | Sort-Object FullName -Unique
