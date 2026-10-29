@@ -4,8 +4,10 @@ A small C++/Qt desktop utility for batch-converting a folder of documents. It tu
 
 ## What it does
 
-- **PDF → Word:** renders every PDF page to a PNG at 600 DPI and embeds each PNG as a full-page image in a .docx file.
+- **PDF → Word:** renders every PDF page to a PNG and embeds each PNG as a full-page image in a `.docx` file.
+- **PDF → Word (Legacy .doc):** uses LibreOffice to export the image-page document to the older `.doc` format.
 - **Word → PDF:** uses LibreOffice to lay out Word-compatible documents, then renders that PDF to PNG pages and builds an image-only PDF.
+- **Render quality:** choose Fast (150 DPI), Balanced (300 DPI, default), or Maximum (600 DPI).
 - Scans a selected folder, optionally including subfolders, and preserves the relative folder structure.
 - Writes output to Converted_Word or Converted_PDF inside the selected folder. It skips both output folders on later runs.
 - Leaves input files untouched. A matching existing output file can be replaced.
