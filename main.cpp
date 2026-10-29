@@ -6,6 +6,8 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QFileDialog>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
@@ -23,6 +25,8 @@
 #include <QPdfWriter>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QSet>
+#include <QStatusBar>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QUrl>
@@ -343,8 +347,8 @@ QString imageParagraph(const PageImage &page, int pageNumber, bool endsSection)
     const double availableWidthEmu = pageWidthPoints * 12700.0;
     const double availableHeightEmu = qMax(1.0, pageHeightPoints - 1.0) * 12700.0;
     const double imageScale = qMin(availableWidthEmu / pxWidth, availableHeightEmu / pxHeight);
-    const quint64 cx = static_cast<quint64>(qMax(1.0, qRound64(pxWidth * imageScale)));
-    const quint64 cy = static_cast<quint64>(qMax(1.0, qRound64(pxHeight * imageScale)));
+    const quint64 cx = static_cast<quint64>(qMax<qint64>(1, qRound64(pxWidth * imageScale)));
+    const quint64 cy = static_cast<quint64>(qMax<qint64>(1, qRound64(pxHeight * imageScale)));
 
     QString xml = QStringLiteral("<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:jc w:val=\"center\"/>");
     if (endsSection)
@@ -475,7 +479,7 @@ QString findLibreOffice()
         QDir(programFilesX86).filePath(QStringLiteral("LibreOffice/program/soffice.exe"))
     };
     for (const QString &candidate : candidates) {
-        if (QFileInfo::isFile(candidate))
+        if (QFileInfo(candidate).isFile())
             return candidate;
     }
 #elif defined(Q_OS_MACOS)
@@ -517,7 +521,7 @@ QString convertWordToTemporaryPdf(const QString &source, const QString &tempDire
     const QString outputPdf = QDir(tempDirectory).filePath(QFileInfo(source).completeBaseName() + QStringLiteral(".pdf"));
     if (process.exitStatus() != QProcess::NormalExit ||
         process.exitCode() != 0 ||
-        !QFileInfo::isFile(outputPdf)) {
+        !QFileInfo(outputPdf).isFile()) {
         QString detail = QString::fromUtf8(process.readAllStandardError()).trimmed();
         if (detail.isEmpty())
             detail = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
@@ -865,7 +869,7 @@ public:
                 m_folder->setText(selected);
         });
         connect(m_convert, &QPushButton::clicked, this, [this]() { startConversion(); });
-        connect(m_direction, &QComboBox::currentIndexChanged, this, [this](int) {
+        connect(m_direction, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int) {
             updateDependencyHint();
         });
         updateDependencyHint();
