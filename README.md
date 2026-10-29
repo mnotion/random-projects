@@ -16,7 +16,7 @@ A small C++/Qt desktop utility for batch-converting a folder of documents. It tu
 
 PNG compression is lossless, so the stored raster pixels are not compressed with JPEG-style quality loss. However, a PDF or Word document is being **rasterised** to pixels: this does not preserve the original vector shapes, embedded fonts, searchable text, links, form fields, or document structure. The resulting Word document contains page images rather than editable text, and the resulting PDF contains image pages rather than a selectable text layer. No OCR is performed.
 
-The app always renders at 600 DPI. Higher-resolution output can produce large files and use substantial memory.
+The app defaults to 300 DPI for a speed/quality balance. Choose 600 DPI when fine detail matters more than speed and file size; choose 150 DPI for faster conversions.
 
 ## Requirements
 
