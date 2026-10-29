@@ -814,7 +814,7 @@ public slots:
             const QString path = iterator.next();
             if (isGeneratedOutputPath(path, m_root))
                 continue;
-            if (supportedFile(path, m_pdfToWord))
+            if (supportedFile(path, pdfToWord))
                 files.push_back(QDir::cleanPath(path));
         }
         std::sort(files.begin(), files.end(), [](const QString &a, const QString &b) {
@@ -822,7 +822,7 @@ public slots:
         });
 
         if (files.isEmpty()) {
-            emit logMessage(m_pdfToWord
+            emit logMessage(pdfToWord
                 ? QStringLiteral("No PDF files were found in the selected folder.")
                 : QStringLiteral("No supported Word-compatible files were found in the selected folder."));
             emit progressChanged(0, 0);
