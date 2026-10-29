@@ -52,10 +52,10 @@ Word-compatible formats recognised for the second direction are .docx, .doc, .do
 
 ## Create the portable app (one-click script)
 
-1. Open the project in Qt Creator and make sure it has been configured with the **Desktop Qt 6.12.0 MinGW 64-bit** kit at least once.
-2. Double-click **`make_portable.bat`** in the repository folder.
+1. Double-click **`make_portable.bat`** in the repository folder.
+2. The script locates Qt and MinGW, builds a Release version, and collects the runtime files.
 3. When it says **DONE**, copy the whole **`dist/PageConvert`** folder to the other Windows PC and open `PageConvert.exe`.
 
-The script automatically builds a Release version and collects the Qt runtime files. The other PC does not need Qt installed. This is a portable folder, not a single-file EXE. If the script reports that it cannot find the kit, open the project in Qt Creator and configure the MinGW kit first.
+This requires Qt 6.12 MinGW 64-bit, the matching MinGW compiler and CMake installed on the development PC. If the script says one is missing, install it through Qt Maintenance Tool. The other PC does not need Qt installed. This is a portable folder, not a single-file EXE.
 
 **Separate requirement:** Word → PDF uses LibreOffice to lay out documents. The other PC must have LibreOffice installed for that feature; the script does not bundle LibreOffice. PDF → Word does not require LibreOffice.
