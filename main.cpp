@@ -484,7 +484,7 @@ QString findLibreOffice()
     }
 #elif defined(Q_OS_MACOS)
     const QString candidate = QStringLiteral("/Applications/LibreOffice.app/Contents/MacOS/soffice");
-    if (QFileInfo::isFile(candidate))
+    if (QFileInfo(candidate).isFile())
         return candidate;
 #endif
     return {};
