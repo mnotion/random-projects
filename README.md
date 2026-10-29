@@ -37,8 +37,8 @@ Alternatively, run build_and_run.bat in a developer command prompt where CMake, 
 ## Use
 
 1. Launch PageConvert and select the folder containing the source documents.
-2. Choose PDF → Word or Word → PDF.
-3. Conversion always uses the maximum render setting: 600 DPI.
+2. Choose PDF → Word, PDF → Word (Legacy .doc), or Word → PDF.
+3. Choose Fast (150 DPI), Balanced (300 DPI), or Maximum (600 DPI).
 4. Leave **Include subfolders** enabled to process all matching files below the selected folder.
 5. Select **Convert folder**. The app shows progress and logs failed files without stopping the rest of the batch.
 
