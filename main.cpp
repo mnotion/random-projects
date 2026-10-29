@@ -3,6 +3,7 @@
 #include <QComboBox>
 #include <QDir>
 #include <QDirIterator>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QFileDialog>
@@ -30,6 +31,7 @@
 #include <QSizeF>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -42,7 +44,7 @@
 #include <vector>
 
 namespace {
-constexpr int kDefaultDpi = 300;
+constexpr int kDefaultDpi = 600;
 constexpr quint64 kMaxPixelsPerPage = 65000000ULL;
 constexpr quint64 kMaxZip32Size = 0xFFFFFFFFULL;
 constexpr quint16 kZipUtf8Flag = 0x0800;
@@ -292,23 +294,50 @@ QImage renderPage(QPdfDocument &document, int pageIndex, int dpi)
     if (raw.isNull())
         fail(QStringLiteral("Qt could not render PDF page %1.").arg(pageIndex + 1));
 
-    // Some PDFs render with transparent background. Flatten onto white for a normal printed page.
-    QImage opaque(raw.size(), QImage::Format_RGB32);
-    opaque.fill(Qt::white);
+    // Flatten transparency onto white in-place. A second full-size image at
+    // 600 DPI can double peak memory and cause Windows to terminate large batches.
     {
-        QPainter painter(&opaque);
-        painter.drawImage(0, 0, raw);
+        QPainter painter(&raw);
+        painter.setCompositionMode(QPainter::CompositionMode_DestinationOver);
+        painter.fillRect(raw.rect(), Qt::white);
     }
-    return opaque;
+    return raw;
 }
 
 void requirePdfLoaded(QPdfDocument &document, const QString &path)
 {
     const QPdfDocument::Error error = document.load(path);
-    if (error != QPdfDocument::Error::None) {
+    if (error != QPdfDocument::Error::None &&
+        error != QPdfDocument::Error::DataNotYetAvailable) {
         fail(QStringLiteral("Could not open PDF: %1 (Qt PDF error %2).")
                  .arg(path).arg(static_cast<int>(error)));
     }
+
+    // Do not render while Qt PDF is still loading; pages may otherwise appear blank.
+    if (document.status() == QPdfDocument::Status::Loading) {
+        QEventLoop loop;
+        QTimer timer;
+        timer.setSingleShot(true);
+
+        QObject::connect(&document, &QPdfDocument::statusChanged, &loop,
+                         [&loop](QPdfDocument::Status status) {
+            if (status != QPdfDocument::Status::Loading)
+                loop.quit();
+        });
+        QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+        timer.start(30000);
+        if (document.status() == QPdfDocument::Status::Loading)
+            loop.exec();
+    }
+
+    if (document.status() != QPdfDocument::Status::Ready) {
+        fail(QStringLiteral("PDF did not finish loading: %1 (status %2, error %3).")
+                 .arg(path)
+                 .arg(static_cast<int>(document.status()))
+                 .arg(static_cast<int>(document.error())));
+    }
+
     if (document.pageCount() < 1)
         fail(QStringLiteral("The PDF has no readable pages: %1").arg(path));
 }
@@ -798,7 +827,7 @@ public:
         layout->addWidget(title);
 
         auto *description = new QLabel(
-            QStringLiteral("Batch-convert a folder. Each output page is a PNG image; no OCR or text extraction is performed."),
+            QStringLiteral("Batch-convert a folder of documents."),
             central);
         description->setWordWrap(true);
         layout->addWidget(description);
@@ -815,21 +844,10 @@ public:
         layout->addLayout(folderRow);
 
         auto *options = new QHBoxLayout();
-        auto *directionLabel = new QLabel(QStringLiteral("Direction"), central);
         m_direction = new QComboBox(central);
-        m_direction->addItem(QStringLiteral("PDF → Word (.docx, PNG pages)"), true);
-        m_direction->addItem(QStringLiteral("Word → PDF (image-only pages)"), false);
-        auto *dpiLabel = new QLabel(QStringLiteral("Render quality"), central);
-        m_dpi = new QComboBox(central);
-        m_dpi->addItem(QStringLiteral("150 DPI — smaller files"), 150);
-        m_dpi->addItem(QStringLiteral("300 DPI — recommended"), 300);
-        m_dpi->addItem(QStringLiteral("600 DPI — high detail"), 600);
-        m_dpi->setCurrentIndex(1);
-        options->addWidget(directionLabel);
+        m_direction->addItem(QStringLiteral("PDF → Word"), true);
+        m_direction->addItem(QStringLiteral("Word → PDF"), false);
         options->addWidget(m_direction, 1);
-        options->addSpacing(8);
-        options->addWidget(dpiLabel);
-        options->addWidget(m_dpi);
         layout->addLayout(options);
 
         m_recursive = new QCheckBox(QStringLiteral("Include subfolders and preserve their folder structure"), central);
@@ -855,12 +873,6 @@ public:
         m_log->setPlaceholderText(QStringLiteral("Conversion results will appear here."));
         layout->addWidget(m_log, 1);
 
-        auto *footnote = new QLabel(
-            QStringLiteral("PNG compression is lossless. Rasterising a document is not the same as preserving its original vector/text data. Word → PDF requires LibreOffice."),
-            central);
-        footnote->setWordWrap(true);
-        layout->addWidget(footnote);
-
         setCentralWidget(central);
 
         connect(browse, &QPushButton::clicked, this, [this]() {
@@ -870,30 +882,9 @@ public:
                 m_folder->setText(selected);
         });
         connect(m_convert, &QPushButton::clicked, this, [this]() { startConversion(); });
-        connect(m_direction, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int) {
-            updateDependencyHint();
-        });
-        updateDependencyHint();
     }
 
 private:
-    void updateDependencyHint()
-    {
-        if (m_direction->currentData().toBool()) {
-            statusBarHint(QStringLiteral("PDF → Word renders every PDF page to a PNG and embeds each PNG as a full-page image."));
-        } else {
-            statusBarHint(QStringLiteral("Word → PDF uses LibreOffice for layout, then rasterises its PDF output into PNG-backed PDF pages."));
-        }
-    }
-
-    void statusBarHint(const QString &text)
-    {
-        if (statusBar())
-            statusBar()->showMessage(text);
-        else
-            statusBar()->setToolTip(text);
-    }
-
     void startConversion()
     {
         if (m_thread && m_thread->isRunning())
@@ -924,11 +915,11 @@ private:
         m_log->clear();
         appendLog(QStringLiteral("Input: %1").arg(root));
         appendLog(QStringLiteral("Direction: %1").arg(pdfToWord ? QStringLiteral("PDF → Word") : QStringLiteral("Word → PDF")));
-        appendLog(QStringLiteral("Render DPI: %1").arg(m_dpi->currentData().toInt()));
+        appendLog(QStringLiteral("Render quality: maximum (600 DPI)"));
 
         m_thread = new QThread(this);
         auto *worker = new BatchWorker(root, pdfToWord, m_recursive->isChecked(),
-                                       m_dpi->currentData().toInt(), libreOffice);
+                                       kDefaultDpi, libreOffice);
         worker->moveToThread(m_thread);
 
         connect(m_thread, &QThread::started, worker, &BatchWorker::run);
@@ -978,7 +969,6 @@ private:
 
     QLineEdit *m_folder = nullptr;
     QComboBox *m_direction = nullptr;
-    QComboBox *m_dpi = nullptr;
     QCheckBox *m_recursive = nullptr;
     QPushButton *m_convert = nullptr;
     QProgressBar *m_progress = nullptr;
