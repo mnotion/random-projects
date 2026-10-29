@@ -45,7 +45,7 @@
 
 namespace {
 constexpr int kDefaultDpi = 600;
-constexpr quint64 kMaxPixelsPerPage = 65000000ULL;
+constexpr quint64 kMaxPixelsPerPage = 40000000ULL;
 constexpr quint64 kMaxZip32Size = 0xFFFFFFFFULL;
 constexpr quint16 kZipUtf8Flag = 0x0800;
 constexpr quint16 kZipDosDate = static_cast<quint16>(((2024 - 1980) << 9) | (1 << 5) | 1);
@@ -286,7 +286,7 @@ QImage renderPage(QPdfDocument &document, int pageIndex, int dpi)
     const qint64 height = qMax<qint64>(1, qRound64(points.height() * dpi / 72.0));
     if (width > 30000 || height > 30000 ||
         static_cast<quint64>(width) * static_cast<quint64>(height) > kMaxPixelsPerPage) {
-        fail(QStringLiteral("Page %1 would be too large at %2 DPI. Choose a lower DPI.")
+        fail(QStringLiteral("Page %1 is too large to process safely at %2 DPI. It was skipped to avoid exhausting memory.")
                  .arg(pageIndex + 1).arg(dpi));
     }
 
