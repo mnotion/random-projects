@@ -1,5 +1,4 @@
 #include <QApplication>
-#include <QBuffer>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDir>
@@ -27,6 +26,8 @@
 #include <QStandardPaths>
 #include <QSet>
 #include <QStatusBar>
+#include <QStringList>
+#include <QSizeF>
 #include <QTemporaryDir>
 #include <QThread>
 #include <QUrl>
