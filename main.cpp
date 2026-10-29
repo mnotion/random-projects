@@ -380,7 +380,7 @@ QString imageParagraph(const PageImage &page, int pageNumber, bool endsSection)
     const quint64 cx = static_cast<quint64>(qMax<qint64>(1, qRound64(pxWidth * imageScale)));
     const quint64 cy = static_cast<quint64>(qMax<qint64>(1, qRound64(pxHeight * imageScale)));
 
-    QString xml = QStringLiteral("<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/><w:jc w:val=\"center\"/>");
+    QString xml = QStringLiteral("<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/><w:jc w:val=\"center\"/>");
     if (endsSection)
         xml += sectionProperties(page.pointSize, true);
     xml += QStringLiteral("</w:pPr><w:r><w:drawing><wp:inline distT=\"0\" distB=\"0\" distL=\"0\" distR=\"0\">");
