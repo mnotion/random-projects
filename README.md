@@ -49,3 +49,19 @@ Word-compatible formats recognised for the second direction are .docx, .doc, .do
 - For unusually large page sizes, reduce the DPI if the app reports that a page would exceed its safety limit.
 - Password-protected or damaged PDFs may not be readable by Qt PDF.
 - Source documents are processed locally. No documents are uploaded to a service.
+
+## Create a portable Windows folder (no Qt installation on the other PC)
+
+A normal Qt build needs Qt DLLs and plugins. Use Qt's `windeployqt` tool to collect those beside the EXE. This repository includes `package_windows.bat` for that step.
+
+1. In Qt Creator, choose the **Release** build configuration for your **Desktop Qt 6.12.0 MinGW 64-bit** kit, then build PageConvert.
+2. Open a command prompt configured for that same Qt kit. Use that kit's `qtenv2.bat` if needed so `windeployqt.exe` and the matching compiler runtime are on PATH.
+3. From this repository folder, run the script with the full path to the Release executable:
+
+   `package_windows.bat "C:/full/path/to/PageConvert.exe"`
+
+4. The portable folder is created at `dist/PageConvert`. Copy the **entire folder**, not just the EXE, to the other Windows PC and run `PageConvert.exe`.
+
+Build and deploy with the same Qt version and compiler kit. Test the folder on a PC without Qt before sharing it. This is a portable folder, not a single-file EXE.
+
+**Separate requirement:** Word → PDF uses LibreOffice to lay out documents. The other PC must have LibreOffice installed for that feature; the Qt deployment script does not bundle LibreOffice. PDF → Word does not require LibreOffice.
