@@ -23,13 +23,13 @@ The app defaults to 300 DPI for a speed/quality balance. Choose 600 DPI when fin
 - C++17 compiler compatible with your Qt kit.
 - CMake 3.21 or newer.
 - Qt 6.5 or newer, including the **Qt PDF** module, plus Qt Core, Gui and Widgets.
-- LibreOffice for Word → PDF. PDF → Word does not require LibreOffice.
+- LibreOffice for Word → PDF and PDF → Word (Legacy .doc). Standard PDF → Word does not require LibreOffice.
 
 ## Build on Windows
 
 1. Install Qt with the Qt Online Installer. Select a Qt 6.5+ kit that matches your compiler (for example, an MSVC 64-bit kit) and include the Qt PDF module.
 2. Install CMake and the matching C++ compiler. The compiler/SDK must match the Qt kit you installed.
-3. Install LibreOffice from https://www.libreoffice.org/download/download-libreoffice/ if you need Word → PDF.
+3. Install LibreOffice from https://www.libreoffice.org/download/download-libreoffice/ if you need Word → PDF or PDF → Word (Legacy .doc).
 4. Open CMakeLists.txt in Qt Creator, select the matching desktop kit, then build and run PageConvert.
 
 Alternatively, run build_and_run.bat in a developer command prompt where CMake, the compiler, and the Qt kit are configured. If CMake cannot locate Qt, set CMAKE_PREFIX_PATH to the Qt kit directory first, for example C:\Qt\6.x.x\msvc2022_64.
@@ -47,7 +47,7 @@ Word-compatible formats recognised for the second direction are .docx, .doc, .do
 ## Technical notes
 
 - The app and conversion logic are written in C++ using Qt 6 Widgets, Qt PDF, and Qt's PDF writer.
-- The .docx package is assembled in C++ and stores the generated PNGs without additional ZIP compression; the PNG files themselves use lossless compression.
+- The .docx package is assembled in C++ and stores the generated PNGs without additional ZIP compression; the PNG files themselves use lossless compression. CRC checksums use a lookup table to reduce processing overhead.
 - For unusually large page sizes, the app may report that a page exceeds its safety limit.
 - Password-protected or damaged PDFs may not be readable by Qt PDF.
 - Source documents are processed locally. No documents are uploaded to a service.
@@ -60,4 +60,4 @@ Word-compatible formats recognised for the second direction are .docx, .doc, .do
 
 This requires Qt 6.12 MinGW 64-bit, the matching MinGW compiler and CMake installed on the development PC. If the script says one is missing, install it through Qt Maintenance Tool. The other PC does not need Qt installed. This is a portable folder, not a single-file EXE.
 
-**Separate requirement:** Word → PDF uses LibreOffice to lay out documents. The other PC must have LibreOffice installed for that feature; the script does not bundle LibreOffice. PDF → Word does not require LibreOffice.
+**Separate requirement:** Word → PDF and PDF → Word (Legacy .doc) use LibreOffice. The other PC must have LibreOffice installed for those features; the script does not bundle LibreOffice. Standard PDF → Word does not require LibreOffice.
