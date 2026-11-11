@@ -33,7 +33,7 @@ public final class ArgonApplications extends JavaPlugin implements Listener {
         Objects.requireNonNull(getCommand("app")).setExecutor((sender, command, label, args) -> {
             if (!sender.hasPermission("argonapplications.admin")) { sender.sendMessage("No permission."); return true; }
             if (args.length == 0 || args[0].equalsIgnoreCase("list")) {
-                sender.sendMessage("Pending: " + data.getConfigurationSection("pending").getKeys(false)); return true;
+                sender.sendMessage("Pending: " + (data.getConfigurationSection("pending") == null ? "[]" : data.getConfigurationSection("pending").getKeys(false))); return true;
             }
             if (args.length < 2) { sender.sendMessage("/app approve|reject <player>"); return true; }
             OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
@@ -85,7 +85,7 @@ public final class ArgonApplications extends JavaPlugin implements Listener {
     @EventHandler public void block(BlockBreakEvent e){if(pending(e.getPlayer()))e.setCancelled(true);}
     @EventHandler public void place(BlockPlaceEvent e){if(pending(e.getPlayer()))e.setCancelled(true);}
     @EventHandler public void damage(EntityDamageEvent e){if(e.getEntity() instanceof Player p && pending(p) && e.getCause()==EntityDamageEvent.DamageCause.FALL)e.setCancelled(true);}
-    @EventHandler public void combat(EntityDamageByEntityEvent e){if(e.getDamager() instanceof Player p&&pending(p)||e.getEntity() instanceof Player p&&pending(p))e.setCancelled(true);}
+    @EventHandler public void combat(EntityDamageByEntityEvent e){if ((e.getDamager() instanceof Player attacker && pending(attacker)) || (e.getEntity() instanceof Player victim && pending(victim))) e.setCancelled(true);}
     @EventHandler public void hunger(FoodLevelChangeEvent e){if(e.getEntity() instanceof Player p&&pending(p))e.setCancelled(true);}
     @EventHandler public void drop(PlayerDropItemEvent e){if(pending(e.getPlayer()))e.setCancelled(true);}
     @EventHandler public void pickup(EntityPickupItemEvent e){if(e.getEntity() instanceof Player p&&pending(p))e.setCancelled(true);}
