@@ -1,0 +1,14 @@
+name: ArgonApplications
+version: 0.1.0
+main: com.argon.applications.ArgonApplications
+api-version: '1.21'
+softdepend: [Multiverse-Core, floodgate]
+commands:
+  app:
+    description: Manage player applications
+    usage: /app <list|approve|reject>
+permissions:
+  argonapplications.admin:
+    default: op
+  argonapplications.bypass:
+    default: op
