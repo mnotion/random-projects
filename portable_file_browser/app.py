@@ -103,6 +103,7 @@ class FileBrowserApp:
         actions.pack(fill="x", pady=(8, 0))
         ttk.Button(actions, text="Open", command=self.open_selected).pack(side="left")
         ttk.Button(actions, text="Open with Word", command=self.open_with_word).pack(side="left", padx=(6, 0))
+        ttk.Button(actions, text="Open with Microsoft Journal", command=self.open_with_journal).pack(side="left", padx=(6, 0))
         ttk.Button(actions, text="Edit text file", command=self.edit_selected).pack(side="left", padx=(6, 0))
         ttk.Button(actions, text="Open stuff folder", command=self.open_data_folder).pack(side="left", padx=(6, 0))
 
@@ -172,6 +173,28 @@ class FileBrowserApp:
             subprocess.Popen([str(word), str(path)], close_fds=True)
         except OSError as error:
             messagebox.showerror("Could not open with Word", str(error), parent=self.root)
+
+    def open_with_journal(self) -> None:
+        path = self.selected_path()
+        if path is None:
+            messagebox.showinfo("Microsoft Journal", "Select a file first.", parent=self.root)
+            return
+        if sys.platform != "win32":
+            messagebox.showerror("Microsoft Journal", "Microsoft Journal is available as a Windows app.", parent=self.root)
+            return
+        # Journal is a Store app; its packaged activation is not a conventional EXE.
+        try:
+            subprocess.Popen(
+                ["explorer.exe", r"shell:AppsFolder\\Microsoft.MicrosoftJournal_8wekyb3d8bbwe!App"],
+                close_fds=True,
+            )
+            messagebox.showinfo(
+                "Microsoft Journal",
+                "Journal has been launched. Import the selected file from Journal (PDF import is supported).",
+                parent=self.root,
+            )
+        except OSError as error:
+            messagebox.showerror("Could not launch Journal", str(error), parent=self.root)
 
     def open_data_folder(self) -> None:
         try:
