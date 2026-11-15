@@ -1,0 +1,2 @@
+# Build-time only. The packaged EXE includes its own Python runtime.
+PyInstaller>=6.0,<7
