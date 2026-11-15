@@ -60,6 +60,8 @@ class FileBrowserApp:
         self.results.heading("name", text="File")
         self.results.heading("path", text="Relative path")
         self.results.heading("size", text="Size")
+        self.results.tag_configure("word", foreground="blue")
+        self.results.tag_configure("pdf", foreground="red")
         self.results.column("name", width=220, anchor="w")
         self.results.column("path", width=550, anchor="w")
         self.results.column("size", width=90, anchor="e")
@@ -69,6 +71,7 @@ class FileBrowserApp:
         actions = ttk.Frame(outer)
         actions.pack(fill="x", pady=(8, 0))
         ttk.Button(actions, text="Open", command=self.open_selected).pack(side="left")
+        ttk.Button(actions, text="Open with Word", command=self.open_with_word).pack(side="left", padx=(6, 0))
         ttk.Button(actions, text="Edit text file", command=self.edit_selected).pack(side="left", padx=(6, 0))
         ttk.Button(actions, text="Open stuff folder", command=self.open_data_folder).pack(side="left", padx=(6, 0))
 
@@ -99,9 +102,12 @@ class FileBrowserApp:
                 size = 0
             item_id = str(index)
             self._visible_paths[item_id] = path
+            extension = path.suffix.casefold()
+            tags = ("word",) if extension in {".doc", ".docx"} else (("pdf",) if extension == ".pdf" else ())
             self.results.insert(
                 "", "end", iid=item_id,
                 values=(path.name, relative.as_posix(), self._format_size(size)),
+                tags=tags,
             )
         self.status.set(f"{len(files):,} file(s) found. Double-click a file or select it and choose Open.")
 
@@ -118,6 +124,25 @@ class FileBrowserApp:
             open_with_system(path)
         except Exception as error:
             messagebox.showerror("Could not open file", str(error), parent=self.root)
+
+    def open_with_word(self) -> None:
+        path = self.selected_path()
+        if path is None:
+            messagebox.showinfo("Open with Word", "Select a file first.", parent=self.root)
+            return
+        if sys.platform != "win32":
+            messagebox.showerror("Microsoft Word", "This button requires Microsoft Word on Windows.", parent=self.root)
+            return
+        try:
+            subprocess.Popen(["winword", str(path)], close_fds=True)
+        except FileNotFoundError:
+            messagebox.showerror(
+                "Microsoft Word not found",
+                "Microsoft Word is not installed or winword.exe is not on PATH.",
+                parent=self.root,
+            )
+        except OSError as error:
+            messagebox.showerror("Could not open with Word", str(error), parent=self.root)
 
     def open_data_folder(self) -> None:
         try:
