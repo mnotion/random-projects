@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import tkinter as tk
+import winreg
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -18,6 +19,33 @@ def application_directory() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent
+
+
+def find_word_executable() -> Path | None:
+    """Find Word through Windows registration and common Office paths."""
+    if sys.platform != "win32":
+        return None
+    keys = (
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\WINWORD.EXE"),
+    )
+    for hive, key in keys:
+        try:
+            with winreg.OpenKey(hive, key) as reg:
+                value, _ = winreg.QueryValueEx(reg, "")
+                exe = Path(value.strip('"'))
+                if exe.is_file():
+                    return exe
+        except OSError:
+            pass
+    for root in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+        if root:
+            for rel in (r"Microsoft Office\root\Office16\WINWORD.EXE", r"Microsoft Office\Office16\WINWORD.EXE"):
+                exe = Path(root) / rel
+                if exe.is_file():
+                    return exe
+    return None
 
 
 def open_with_system(path: Path) -> None:
@@ -133,14 +161,12 @@ class FileBrowserApp:
         if sys.platform != "win32":
             messagebox.showerror("Microsoft Word", "This button requires Microsoft Word on Windows.", parent=self.root)
             return
+        word = find_word_executable()
+        if word is None:
+            messagebox.showerror("Microsoft Word not found", "Could not locate WINWORD.EXE. Word may be installed in a custom location.", parent=self.root)
+            return
         try:
-            subprocess.Popen(["winword", str(path)], close_fds=True)
-        except FileNotFoundError:
-            messagebox.showerror(
-                "Microsoft Word not found",
-                "Microsoft Word is not installed or winword.exe is not on PATH.",
-                parent=self.root,
-            )
+            subprocess.Popen([str(word), str(path)], close_fds=True)
         except OSError as error:
             messagebox.showerror("Could not open with Word", str(error), parent=self.root)
 
