@@ -5,7 +5,10 @@ import os
 import subprocess
 import sys
 import tkinter as tk
-import winreg
+try:
+    import winreg
+except ImportError:  # Non-Windows development environments
+    winreg = None
 from pathlib import Path
 from tkinter import messagebox, ttk
 
