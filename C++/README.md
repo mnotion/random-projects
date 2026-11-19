@@ -1,28 +1,33 @@
-# C++ Starter App
+# GitHub Activity Window (C++)
 
-A minimal Qt 6 Widgets desktop application. It opens a simple welcome screen with a working **Say hello** button and a **Close** button.
+This is a desktop window built with **Qt 6 Widgets**. It displays a GitHub-style contribution calendar with fictional activity, humorous text, and working buttons. It is not a web page, and opening `main.cpp` in an editor will only show the source code.
 
 ## Requirements
 
 - CMake 3.21 or newer
-- A C++17 compiler
-- Qt 6.5 or newer, with the Widgets component
+- A C++17 compiler (Visual Studio 2022 with the **Desktop development with C++** workload is suitable)
+- Qt 6.5 or newer, including the **Widgets** component
 
-## Build
+## Build and run on Windows
 
-From this directory:
+1. Install Qt 6 with the Qt Widgets component and install CMake and Visual Studio's C++ desktop tools.
+2. Open a terminal in this `C++` folder.
+3. Configure the project, making sure CMake can find your Qt installation:
 
-```sh
-cmake -S . -B build
-cmake --build build
-```
+   ```powershell
+   cmake -S . -B build
+   ```
 
-Run the generated `SimpleScreen` executable from the build directory (the exact location depends on your platform and build configuration).
+4. Build the app:
 
-On Windows with a multi-configuration generator, you may need:
+   ```powershell
+   cmake --build build --config Release
+   ```
 
-```sh
-cmake --build build --config Release
-```
+5. Run `build\\Release\\SimpleScreen.exe` (or `build\\SimpleScreen.exe` if using a single-configuration generator).
 
-This is a separate starter project; it does not change the existing applications in the repository.
+If CMake cannot find Qt, set `CMAKE_PREFIX_PATH` to the Qt installation directory that contains the Qt 6 CMake package files, then rerun the configure command.
+
+## Important
+
+The contribution squares and the displayed count are sample data. The app does not connect to GitHub or read your account activity.
