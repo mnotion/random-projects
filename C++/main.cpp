@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
     headingFont.setBold(true);
     heading->setFont(headingFont);
 
-    auto *count = new QLabel("3 contributions in the last year");
+    auto *count = new QLabel("26 contributions in the last year");
     count->setStyleSheet("color: #656d76; font-size: 13px;");
     top->addWidget(heading);
     top->addStretch();
