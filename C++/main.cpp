@@ -1,5 +1,6 @@
 #include <QApplication>
-#include <QFont>
+#include <QFrame>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMainWindow>
@@ -7,80 +8,148 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <array>
+
+namespace {
+QFrame *dayCell(int level, QWidget *parent)
+{
+    static const std::array<const char *, 5> colours = {
+        "#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"
+    };
+
+    auto *cell = new QFrame(parent);
+    cell->setFixedSize(13, 13);
+    cell->setStyleSheet(QString("background: %1; border-radius: 3px;")
+                            .arg(colours.at(static_cast<std::size_t>(level))));
+    cell->setToolTip(level == 0 ? "No commits. A peaceful day."
+                                : QString("%1 contribution(s).").arg(level * 3));
+    return cell;
+}
+}
+
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
 
     QMainWindow window;
-    window.setWindowTitle("My C++ App");
-    window.resize(720, 460);
-    window.setMinimumSize(520, 340);
+    window.setWindowTitle("GitHub Activity (Trust Me)");
+    window.resize(850, 440);
+    window.setMinimumSize(680, 390);
 
     auto *central = new QWidget(&window);
-    central->setStyleSheet("background-color: #f4f6fb; color: #172033;");
+    central->setStyleSheet("background: #ffffff; color: #1f2328;");
     auto *layout = new QVBoxLayout(central);
-    layout->setContentsMargins(48, 42, 48, 42);
-    layout->setSpacing(18);
+    layout->setContentsMargins(34, 28, 34, 26);
+    layout->setSpacing(14);
 
-    auto *eyebrow = new QLabel("C++ STARTER PROJECT");
-    eyebrow->setStyleSheet("color: #5265d8; font-size: 12px; font-weight: 700; letter-spacing: 2px;");
-
-    auto *heading = new QLabel("Welcome.");
+    auto *top = new QHBoxLayout();
+    auto *heading = new QLabel("My GitHub activity");
     QFont headingFont = heading->font();
-    headingFont.setPointSize(30);
+    headingFont.setPointSize(21);
     headingFont.setBold(true);
     heading->setFont(headingFont);
 
-    auto *description = new QLabel(
-        "Your new C++ desktop application is up and running.\n"
-        "Use this screen as a starting point for your next idea."
-    );
-    description->setWordWrap(true);
-    description->setStyleSheet("color: #596579; font-size: 15px; line-height: 1.5;");
+    auto *count = new QLabel("3 contributions in the last year");
+    count->setStyleSheet("color: #656d76; font-size: 13px;");
+    top->addWidget(heading);
+    top->addStretch();
+    top->addWidget(count);
+    layout->addLayout(top);
 
-    auto *status = new QLabel("Ready when you are.");
-    status->setStyleSheet(
-        "background: white; border: 1px solid #e1e6f0; border-radius: 10px;"
-        "padding: 16px; color: #39445a; font-size: 14px;"
-    );
+    auto *subtitle = new QLabel("A detailed record of my dedication to pushing code (and occasionally fixing typos).");
+    subtitle->setStyleSheet("color: #656d76; font-size: 13px;");
+    subtitle->setWordWrap(true);
+    layout->addWidget(subtitle);
 
-    auto *actions = new QHBoxLayout();
-    auto *helloButton = new QPushButton("Say hello");
-    helloButton->setCursor(Qt::PointingHandCursor);
-    helloButton->setStyleSheet(
-        "QPushButton { background: #5265d8; color: white; border: 0;"
-        "border-radius: 8px; padding: 11px 20px; font-weight: 600; }"
-        "QPushButton:hover { background: #4052c2; }"
-    );
+    auto *chartCard = new QFrame();
+    chartCard->setStyleSheet("QFrame { background: #ffffff; border: 1px solid #d1d9e0; border-radius: 9px; }");
+    auto *chartLayout = new QVBoxLayout(chartCard);
+    chartLayout->setContentsMargins(18, 16, 18, 14);
+    chartLayout->setSpacing(10);
 
-    auto *closeButton = new QPushButton("Close");
-    closeButton->setCursor(Qt::PointingHandCursor);
-    closeButton->setStyleSheet(
-        "QPushButton { background: white; color: #39445a; border: 1px solid #d9dfeb;"
-        "border-radius: 8px; padding: 11px 20px; }"
-        "QPushButton:hover { background: #edf0f7; }"
-    );
+    auto *months = new QHBoxLayout();
+    months->setContentsMargins(34, 0, 0, 0);
+    const std::array<const char *, 6> monthNames = {"Jan", "Mar", "May", "Jul", "Sep", "Nov"};
+    for (const char *month : monthNames) {
+        auto *label = new QLabel(month);
+        label->setStyleSheet("color: #656d76; font-size: 11px; border: none;");
+        months->addWidget(label);
+        months->addStretch(1);
+    }
+    chartLayout->addLayout(months);
 
-    actions->addWidget(helloButton);
-    actions->addWidget(closeButton);
-    actions->addStretch();
+    auto *graph = new QGridLayout();
+    graph->setContentsMargins(0, 0, 0, 0);
+    graph->setHorizontalSpacing(4);
+    graph->setVerticalSpacing(4);
 
-    layout->addWidget(eyebrow);
-    layout->addSpacing(12);
-    layout->addWidget(heading);
-    layout->addWidget(description);
-    layout->addSpacing(12);
-    layout->addWidget(status);
-    layout->addStretch();
-    layout->addLayout(actions);
+    const std::array<const char *, 7> weekdays = {"Mon", "", "Wed", "", "Fri", "", ""};
+    for (int row = 0; row < 7; ++row) {
+        auto *label = new QLabel(weekdays[static_cast<std::size_t>(row)]);
+        label->setFixedWidth(28);
+        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        label->setStyleSheet("color: #656d76; font-size: 10px; border: none;");
+        graph->addWidget(label, row, 0);
+    }
 
-    QObject::connect(helloButton, &QPushButton::clicked, [&]() {
-        status->setText("Hello! Your Qt application is responding to button clicks.");
+    // A deliberately suspicious pattern: activity peaks right before deadlines.
+    for (int week = 0; week < 26; ++week) {
+        for (int day = 0; day < 7; ++day) {
+            int level = 0;
+            if ((week == 3 && day == 2) || (week == 11 && day == 4) ||
+                (week == 18 && day == 1) || (week == 24 && day == 3)) {
+                level = 4;
+            } else if ((week == 2 && day == 3) || (week == 10 && day == 4) ||
+                       (week == 17 && day == 2) || (week == 23 && day == 4)) {
+                level = 2;
+            } else if ((week == 3 && day == 3) || (week == 18 && day == 2)) {
+                level = 1;
+            }
+            graph->addWidget(dayCell(level, chartCard), day, week + 1);
+        }
+    }
+    chartLayout->addLayout(graph);
+
+    auto *legend = new QHBoxLayout();
+    legend->addStretch();
+    auto *less = new QLabel("Less");
+    less->setStyleSheet("color: #656d76; font-size: 10px; border: none;");
+    legend->addWidget(less);
+    for (int level = 0; level < 5; ++level)
+        legend->addWidget(dayCell(level, chartCard));
+    auto *more = new QLabel("More");
+    more->setStyleSheet("color: #656d76; font-size: 10px; border: none;");
+    legend->addWidget(more);
+    chartLayout->addLayout(legend);
+
+    layout->addWidget(chartCard);
+
+    auto *joke = new QLabel("Turns out my most productive day is ‘the day before it’s due’.\nConsistency is temporary. The green squares are forever.");
+    joke->setWordWrap(true);
+    joke->setStyleSheet("background: #f6f8fa; border: 1px solid #d1d9e0; border-radius: 8px;"
+                        "padding: 13px; color: #57606a; font-size: 13px;");
+    layout->addWidget(joke);
+
+    auto *footer = new QHBoxLayout();
+    auto *refresh = new QPushButton("Reassess my life choices");
+    refresh->setCursor(Qt::PointingHandCursor);
+    refresh->setStyleSheet("QPushButton { background: #238636; color: white; border: 0;"
+                           "border-radius: 6px; padding: 9px 14px; font-weight: 600; }"
+                           "QPushButton:hover { background: #2ea043; }");
+    auto *close = new QPushButton("Close");
+    close->setStyleSheet("QPushButton { background: #f6f8fa; color: #24292f; border: 1px solid #d1d9e0;"
+                         "border-radius: 6px; padding: 9px 14px; }");
+    footer->addWidget(refresh);
+    footer->addStretch();
+    footer->addWidget(close);
+    layout->addLayout(footer);
+
+    QObject::connect(refresh, &QPushButton::clicked, joke, [joke]() {
+        joke->setText("Refreshing activity…\nStill waiting for the motivation commit to land.");
     });
-    QObject::connect(closeButton, &QPushButton::clicked, &window, &QMainWindow::close);
+    QObject::connect(close, &QPushButton::clicked, &window, &QMainWindow::close);
 
     window.setCentralWidget(central);
     window.show();
-
     return app.exec();
 }
